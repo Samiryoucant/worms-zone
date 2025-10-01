@@ -1,0 +1,1333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Worms Zone.io</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #0c0c1a;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+            height: 100vh;
+            touch-action: none;
+        }
+        
+        #gameCanvas {
+            display: block;
+            background: #0c0c1a;
+        }
+        
+        #uiContainer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        
+        #playerInfo {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 18px;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(0, 240, 255, 0.7);
+            background: rgba(0, 0, 0, 0.3);
+            padding: 8px 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(0, 200, 255, 0.3);
+        }
+        
+        #leaderboard {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 220px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(0, 200, 255, 0.3);
+        }
+        
+        #leaderboard h3 {
+            margin-bottom: 10px;
+            font-size: 16px;
+            color: #00f0ff;
+            text-align: center;
+        }
+        
+        #leaderboard .entry {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            font-size: 14px;
+        }
+        
+        #leaderboard .entry.you {
+            color: #00f0ff;
+            font-weight: bold;
+        }
+        
+        #abilities {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            pointer-events: auto;
+        }
+        
+        .ability {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            background: rgba(0, 30, 60, 0.7);
+            border: 2px solid rgba(0, 200, 255, 0.5);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            backdrop-filter: blur(5px);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .ability:hover {
+            transform: scale(1.1);
+            border-color: #00f0ff;
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.5);
+        }
+        
+        .ability-icon {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        
+        .ability-name {
+            font-size: 10px;
+            text-align: center;
+            font-weight: bold;
+            text-shadow: 0 0 5px rgba(0, 240, 255, 0.7);
+        }
+        
+        .cooldown-mask {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 12px;
+            transition: height 0.1s linear;
+        }
+        
+        #deathScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        
+        #deathScreen.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        
+        #deathMessage {
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-align: center;
+            color: #ff3366;
+            text-shadow: 0 0 20px rgba(255, 51, 102, 0.7);
+        }
+        
+        #finalRank {
+            font-size: 24px;
+            margin-bottom: 30px;
+            color: #00f0ff;
+        }
+        
+        #respawnButton {
+            padding: 12px 40px;
+            font-size: 20px;
+            background: linear-gradient(to bottom, #0066ff, #003399);
+            border: none;
+            border-radius: 30px;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 0 20px rgba(0, 102, 255, 0.7);
+            transition: all 0.2s;
+        }
+        
+        #respawnButton:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(0, 102, 255, 0.9);
+        }
+        
+        #respawnButton:active {
+            transform: scale(0.98);
+        }
+        
+        #respawnCountdown {
+            font-size: 36px;
+            margin-top: 20px;
+            color: #00f0ff;
+        }
+        
+        #instructions {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 14px;
+            text-align: center;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(0, 200, 255, 0.3);
+        }
+        
+        @media (max-width: 768px) {
+            #playerInfo, #leaderboard {
+                font-size: 14px;
+                padding: 6px 10px;
+            }
+            
+            #leaderboard {
+                width: 180px;
+            }
+            
+            .ability {
+                width: 50px;
+                height: 50px;
+            }
+            
+            .ability-icon {
+                font-size: 20px;
+            }
+            
+            .ability-name {
+                font-size: 8px;
+            }
+            
+            #deathMessage {
+                font-size: 32px;
+            }
+            
+            #finalRank {
+                font-size: 18px;
+            }
+            
+            #respawnButton {
+                padding: 10px 30px;
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="uiContainer">
+        <div id="playerInfo">Player • Length: 30</div>
+        
+        <div id="leaderboard">
+            <h3>LEADERBOARD</h3>
+            <div class="entry you">1. Player • 30</div>
+            <div class="entry">2. BotA • 210</div>
+            <div class="entry">3. BotB • 180</div>
+            <div class="entry">4. BotC • 150</div>
+            <div class="entry">5. BotD • 120</div>
+        </div>
+        
+        <div id="abilities">
+            <div class="ability" id="boost">
+                <div class="ability-icon">⚡</div>
+                <div class="ability-name">BOOST</div>
+                <div class="cooldown-mask" style="height: 0%"></div>
+            </div>
+            <div class="ability" id="shield">
+                <div class="ability-icon">🛡️</div>
+                <div class="ability-name">SHIELD</div>
+                <div class="cooldown-mask" style="height: 0%"></div>
+            </div>
+            <div class="ability" id="mineDrop">
+                <div class="ability-icon">💣</div>
+                <div class="ability-name">MINES</div>
+                <div class="cooldown-mask" style="height: 0%"></div>
+            </div>
+            <div class="ability" id="trailErase">
+                <div class="ability-icon">✨</div>
+                <div class="ability-name">ERASE</div>
+                <div class="cooldown-mask" style="height: 0%"></div>
+            </div>
+        </div>
+        
+        <div id="instructions">Move your mouse/touch to control your worm • Click abilities to activate</div>
+    </div>
+    
+    <div id="deathScreen">
+        <div id="deathMessage">YOU WERE ELIMINATED!</div>
+        <div id="finalRank">Final Rank: #1</div>
+        <button id="respawnButton">RESPAWN</button>
+        <div id="respawnCountdown"></div>
+    </div>
+
+    <script>
+        // Game constants
+        const WORLD_SIZE = 4000;
+        const VIEWPORT_SIZE = Math.min(window.innerWidth, window.innerHeight);
+        const STARTING_LENGTH = 30;
+        const MAX_LENGTH = 500;
+        const ORB_COUNT = 80;
+        const BOT_COUNT = 10;
+        const TRAIL_FADE_TIME = 5000; // ms
+        const RESPAWN_TIME = 3000; // ms
+        
+        // Game state
+        const gameState = {
+            player: null,
+            bots: [],
+            orbs: [],
+            mines: [],
+            particles: [],
+            camera: { x: 0, y: 0, targetX: 0, targetY: 0 },
+            leaderboard: [],
+            gameOver: false,
+            respawnTimer: 0,
+            lastTime: 0,
+            mouseX: 0,
+            mouseY: 0,
+            isTouch: false
+        };
+        
+        // Canvas setup
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        
+        // Resize handling
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+        
+        // Input handling
+        canvas.addEventListener('mousemove', (e) => {
+            gameState.mouseX = e.clientX;
+            gameState.mouseY = e.clientY;
+            gameState.isTouch = false;
+        });
+        
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            gameState.mouseX = touch.clientX;
+            gameState.mouseY = touch.clientY;
+            gameState.isTouch = true;
+        });
+        
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            gameState.mouseX = touch.clientX;
+            gameState.mouseY = touch.clientY;
+            gameState.isTouch = true;
+        });
+        
+        // Ability cooldowns
+        const abilityCooldowns = {
+            boost: 0,
+            shield: 0,
+            mineDrop: 0,
+            trailErase: 0
+        };
+        
+        // Ability durations
+        const abilityDurations = {
+            boost: 1500,
+            shield: 2000,
+            mineDrop: 0,
+            trailErase: 3000
+        };
+        
+        // Passive traits
+        const passiveTraits = [
+            { name: "Regeneration", effect: "Trail fades 30% faster" },
+            { name: "Magnet", effect: "Orbs within 100px auto-attract" },
+            { name: "Camouflage", effect: "Trail opacity reduced by 40%" },
+            { name: "Thorns", effect: "Enemies take damage on trail collision" }
+        ];
+        
+        // Bot names
+        const botNames = [
+            "BotA", "BotB", "BotC", "BotD", "BotE", "BotF", 
+            "BotG", "BotH", "BotI", "BotJ", "BotK", "BotL"
+        ];
+        
+        // Bot colors
+        const botColors = [
+            "#ff5555", "#55ff55", "#5555ff", "#ffff55", 
+            "#ff55ff", "#55ffff", "#ffaa55", "#55aaff",
+            "#aaff55", "#ff55aa", "#aa55ff", "#55ffaa"
+        ];
+        
+        // Utility functions
+        function distance(x1, y1, x2, y2) {
+            return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+        }
+        
+        function random(min, max) {
+            return Math.random() * (max - min) + min;
+        }
+        
+        function lerp(a, b, t) {
+            return a + (b - a) * t;
+        }
+        
+        function clamp(value, min, max) {
+            return Math.max(min, Math.min(max, value));
+        }
+        
+        function getWorldPosition(screenX, screenY) {
+            return {
+                x: gameState.camera.x + (screenX - canvas.width / 2),
+                y: gameState.camera.y + (screenY - canvas.height / 2)
+            };
+        }
+        
+        // Particle system
+        class Particle {
+            constructor(x, y, color, size, life, vx, vy) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.size = size;
+                this.life = life;
+                this.maxLife = life;
+                this.vx = vx;
+                this.vy = vy;
+                this.gravity = 0.05;
+            }
+            
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += this.gravity;
+                this.life -= 16; // Assuming 60fps
+                this.size *= 0.98;
+                return this.life > 0;
+            }
+            
+            draw(ctx) {
+                const alpha = this.life / this.maxLife;
+                ctx.globalAlpha = alpha;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            }
+        }
+        
+        // Orb class
+        class Orb {
+            constructor(x, y, size = 1) {
+                this.x = x;
+                this.y = y;
+                this.size = size;
+                this.radius = size * 8;
+                this.pulse = 0;
+                this.vx = random(-0.5, 0.5);
+                this.vy = random(-0.5, 0.5);
+                this.color = size > 1 ? "#ffaa00" : "#ffffff";
+            }
+            
+            update() {
+                // Drift with subtle noise
+                this.x += this.vx;
+                this.y += this.vy;
+                
+                // Bounce off walls
+                if (this.x < this.radius || this.x > WORLD_SIZE - this.radius) {
+                    this.vx *= -0.8;
+                    this.x = clamp(this.x, this.radius, WORLD_SIZE - this.radius);
+                }
+                if (this.y < this.radius || this.y > WORLD_SIZE - this.radius) {
+                    this.vy *= -0.8;
+                    this.y = clamp(this.y, this.radius, WORLD_SIZE - this.radius);
+                }
+                
+                // Pulse animation
+                this.pulse = (this.pulse + 0.05) % (Math.PI * 2);
+            }
+            
+            draw(ctx, camera) {
+                const screenX = this.x - camera.x + canvas.width / 2;
+                const screenY = this.y - camera.y + canvas.height / 2;
+                
+                if (screenX < -50 || screenX > canvas.width + 50 || 
+                    screenY < -50 || screenY > canvas.height + 50) {
+                    return;
+                }
+                
+                const pulseSize = Math.sin(this.pulse) * 2;
+                const glowSize = 15 + pulseSize;
+                
+                // Glow effect
+                ctx.beginPath();
+                ctx.arc(screenX, screenY, glowSize, 0, Math.PI * 2);
+                const gradient = ctx.createRadialGradient(
+                    screenX, screenY, 0,
+                    screenX, screenY, glowSize
+                );
+                gradient.addColorStop(0, this.color);
+                gradient.addColorStop(1, "transparent");
+                ctx.fillStyle = gradient;
+                ctx.fill();
+                
+                // Core
+                ctx.beginPath();
+                ctx.arc(screenX, screenY, this.radius + pulseSize, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+            }
+        }
+        
+        // Mine class
+        class Mine {
+            constructor(x, y, owner) {
+                this.x = x;
+                this.y = y;
+                this.radius = 10;
+                this.owner = owner;
+                this.exploding = false;
+                this.explosionRadius = 0;
+                this.maxExplosionRadius = 80;
+                this.life = 5000; // 5 seconds
+            }
+            
+            update() {
+                if (this.exploding) {
+                    this.explosionRadius += 8;
+                    if (this.explosionRadius >= this.maxExplosionRadius) {
+                        return false;
+                    }
+                } else {
+                    this.life -= 16;
+                    if (this.life <= 0) {
+                        this.exploding = true;
+                    }
+                }
+                return true;
+            }
+            
+            draw(ctx, camera) {
+                const screenX = this.x - camera.x + canvas.width / 2;
+                const screenY = this.y - camera.y + canvas.height / 2;
+                
+                if (this.exploding) {
+                    // Explosion effect
+                    const alpha = 1 - (this.explosionRadius / this.maxExplosionRadius);
+                    ctx.globalAlpha = alpha;
+                    ctx.beginPath();
+                    ctx.arc(screenX, screenY, this.explosionRadius, 0, Math.PI * 2);
+                    const gradient = ctx.createRadialGradient(
+                        screenX, screenY, 0,
+                        screenX, screenY, this.explosionRadius
+                    );
+                    gradient.addColorStop(0, "rgba(255, 50, 50, 0.8)");
+                    gradient.addColorStop(1, "transparent");
+                    ctx.fillStyle = gradient;
+                    ctx.fill();
+                    ctx.globalAlpha = 1;
+                } else {
+                    // Mine core
+                    ctx.beginPath();
+                    ctx.arc(screenX, screenY, this.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = "#ff3366";
+                    ctx.fill();
+                    
+                    // Mine glow
+                    ctx.beginPath();
+                    ctx.arc(screenX, screenY, this.radius + 5, 0, Math.PI * 2);
+                    const gradient = ctx.createRadialGradient(
+                        screenX, screenY, 0,
+                        screenX, screenY, this.radius + 5
+                    );
+                    gradient.addColorStop(0, "rgba(255, 50, 50, 0.7)");
+                    gradient.addColorStop(1, "transparent");
+                    ctx.fillStyle = gradient;
+                    ctx.fill();
+                }
+            }
+        }
+        
+        // Worm class
+        class Worm {
+            constructor(x, y, name, color, isPlayer = false) {
+                this.x = x;
+                this.y = y;
+                this.name = name;
+                this.color = color;
+                this.isPlayer = isPlayer;
+                this.segments = [];
+                this.length = STARTING_LENGTH;
+                this.speed = 2;
+                this.angle = 0;
+                this.trailOpacity = 0.3;
+                this.alive = true;
+                this.boosting = false;
+                this.shieldActive = false;
+                this.trailErased = false;
+                this.trailEraseTime = 0;
+                this.passiveTrait = passiveTraits[Math.floor(Math.random() * passiveTraits.length)];
+                this.activeAbility = null;
+                this.abilityEndTime = 0;
+                
+                // Initialize segments
+                for (let i = 0; i < this.length; i++) {
+                    this.segments.push({
+                        x: this.x - Math.cos(this.angle) * i,
+                        y: this.y - Math.sin(this.angle) * i,
+                        age: i
+                    });
+                }
+            }
+            
+            update() {
+                if (!this.alive) return;
+                
+                // Handle active ability
+                if (this.activeAbility && Date.now() > this.abilityEndTime) {
+                    this.deactivateAbility();
+                }
+                
+                // Update position based on input (player) or AI (bots)
+                if (this.isPlayer) {
+                    this.updatePlayer();
+                } else {
+                    this.updateBot();
+                }
+                
+                // Update segments
+                this.segments[0] = { x: this.x, y: this.y, age: 0 };
+                for (let i = 1; i < this.segments.length; i++) {
+                    const target = this.segments[i - 1];
+                    const current = this.segments[i];
+                    const dx = target.x - current.x;
+                    const dy = target.y - current.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (dist > 1) {
+                        const moveX = dx / dist;
+                        const moveY = dy / dist;
+                        this.segments[i].x += moveX;
+                        this.segments[i].y += moveY;
+                    }
+                    
+                    this.segments[i].age++;
+                }
+                
+                // Remove old segments if trail is erased
+                if (this.trailErased) {
+                    while (this.segments.length > 10 && this.segments.length > this.length) {
+                        this.segments.pop();
+                    }
+                }
+            }
+            
+            updatePlayer() {
+                // Get target position from mouse
+                const worldPos = getWorldPosition(gameState.mouseX, gameState.mouseY);
+                const dx = worldPos.x - this.x;
+                const dy = worldPos.y - this.y;
+                this.angle = Math.atan2(dy, dx);
+                
+                // Apply speed
+                const currentSpeed = this.boosting ? this.speed * 2 : this.speed;
+                this.x += Math.cos(this.angle) * currentSpeed;
+                this.y += Math.sin(this.angle) * currentSpeed;
+                
+                // Boundary check
+                this.x = clamp(this.x, 20, WORLD_SIZE - 20);
+                this.y = clamp(this.y, 20, WORLD_SIZE - 20);
+            }
+            
+            updateBot() {
+                // Simple AI behavior
+                const difficulty = Math.min(3, Math.floor(this.length / 50));
+                let targetX, targetY;
+                
+                // Find nearest orb
+                let nearestOrb = null;
+                let minDist = Infinity;
+                
+                for (const orb of gameState.orbs) {
+                    const dist = distance(this.x, this.y, orb.x, orb.y);
+                    if (dist < minDist) {
+                        minDist = dist;
+                        nearestOrb = orb;
+                    }
+                }
+                
+                // Find nearest player (for aggression)
+                let nearestPlayer = null;
+                let playerDist = Infinity;
+                if (gameState.player && gameState.player.alive) {
+                    playerDist = distance(this.x, this.y, gameState.player.x, gameState.player.y);
+                    if (playerDist < 300) {
+                        nearestPlayer = gameState.player;
+                    }
+                }
+                
+                // Decision making based on difficulty
+                if (difficulty === 0) {
+                    // Easy: Random movement with wall avoidance
+                    if (Math.random() < 0.02) {
+                        this.angle += random(-0.5, 0.5);
+                    }
+                    
+                    // Avoid walls
+                    if (this.x < 100 || this.x > WORLD_SIZE - 100) {
+                        this.angle = Math.PI - this.angle;
+                    }
+                    if (this.y < 100 || this.y > WORLD_SIZE - 100) {
+                        this.angle = -this.angle;
+                    }
+                    
+                    targetX = this.x + Math.cos(this.angle) * 100;
+                    targetY = this.y + Math.sin(this.angle) * 100;
+                } else if (difficulty === 1) {
+                    // Medium: Chase orbs, avoid larger worms
+                    if (nearestOrb && minDist < 300) {
+                        targetX = nearestOrb.x;
+                        targetY = nearestOrb.y;
+                    } else if (nearestPlayer && playerDist < 200 && this.length < nearestPlayer.length) {
+                        // Flee from larger players
+                        targetX = this.x - (nearestPlayer.x - this.x) * 2;
+                        targetY = this.y - (nearestPlayer.y - this.y) * 2;
+                    } else {
+                        // Wander
+                        targetX = this.x + Math.cos(this.angle) * 100;
+                        targetY = this.y + Math.sin(this.angle) * 100;
+                    }
+                } else {
+                    // Hard: Aggressive, trap players, use abilities
+                    if (nearestPlayer && playerDist < 300) {
+                        // Try to cut off player
+                        const playerDirX = Math.cos(nearestPlayer.angle);
+                        const playerDirY = Math.sin(nearestPlayer.angle);
+                        targetX = nearestPlayer.x + playerDirX * 50;
+                        targetY = nearestPlayer.y + playerDirY * 50;
+                    } else if (nearestOrb) {
+                        targetX = nearestOrb.x;
+                        targetY = nearestOrb.y;
+                    } else {
+                        targetX = this.x + Math.cos(this.angle) * 100;
+                        targetY = this.y + Math.sin(this.angle) * 100;
+                    }
+                }
+                
+                // Calculate angle to target
+                const dx = targetX - this.x;
+                const dy = targetY - this.y;
+                this.angle = Math.atan2(dy, dx);
+                
+                // Apply speed
+                this.x += Math.cos(this.angle) * this.speed;
+                this.y += Math.sin(this.angle) * this.speed;
+                
+                // Boundary check
+                this.x = clamp(this.x, 20, WORLD_SIZE - 20);
+                this.y = clamp(this.y, 20, WORLD_SIZE - 20);
+                
+                // Use abilities (for hard bots)
+                if (difficulty === 2 && Math.random() < 0.001) {
+                    const abilities = ['boost', 'shield', 'mineDrop', 'trailErase'];
+                    const ability = abilities[Math.floor(Math.random() * abilities.length)];
+                    this.activateAbility(ability);
+                }
+            }
+            
+            activateAbility(abilityName) {
+                if (this.activeAbility) return;
+                
+                this.activeAbility = abilityName;
+                this.abilityEndTime = Date.now() + abilityDurations[abilityName];
+                
+                switch (abilityName) {
+                    case 'boost':
+                        this.boosting = true;
+                        break;
+                    case 'shield':
+                        this.shieldActive = true;
+                        break;
+                    case 'mineDrop':
+                        // Drop 3 mines behind the worm
+                        for (let i = 1; i <= 3; i++) {
+                            const segment = this.segments[Math.min(i * 5, this.segments.length - 1)];
+                            gameState.mines.push(new Mine(segment.x, segment.y, this));
+                        }
+                        break;
+                    case 'trailErase':
+                        this.trailErased = true;
+                        this.trailEraseTime = Date.now() + abilityDurations[abilityName];
+                        break;
+                }
+                
+                // Create activation particles
+                for (let i = 0; i < 20; i++) {
+                    const angle = random(0, Math.PI * 2);
+                    const speed = random(1, 3);
+                    gameState.particles.push(new Particle(
+                        this.x,
+                        this.y,
+                        this.color,
+                        random(2, 5),
+                        500,
+                        Math.cos(angle) * speed,
+                        Math.sin(angle) * speed
+                    ));
+                }
+            }
+            
+            deactivateAbility() {
+                switch (this.activeAbility) {
+                    case 'boost':
+                        this.boosting = false;
+                        break;
+                    case 'shield':
+                        this.shieldActive = false;
+                        break;
+                    case 'trailErase':
+                        this.trailErased = false;
+                        break;
+                }
+                this.activeAbility = null;
+            }
+            
+            grow(amount) {
+                this.length = Math.min(this.length + amount, MAX_LENGTH);
+                this.speed = Math.max(1, 3 - this.length / 200); // Slower when longer
+                
+                // Adjust trail opacity based on passive trait
+                if (this.passiveTrait.name === "Camouflage") {
+                    this.trailOpacity = 0.18; // 40% reduction from 0.3
+                } else if (this.passiveTrait.name === "Regeneration") {
+                    // Trail fades faster - handled in rendering
+                }
+            }
+            
+            draw(ctx, camera) {
+                if (!this.alive) return;
+                
+                // Draw trail
+                if (!this.trailErased) {
+                    const opacity = this.passiveTrait.name === "Camouflage" ? 0.18 : 0.3;
+                    ctx.strokeStyle = this.color;
+                    ctx.lineWidth = 8;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    ctx.globalAlpha = opacity;
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(
+                        this.segments[0].x - camera.x + canvas.width / 2,
+                        this.segments[0].y - camera.y + canvas.height / 2
+                    );
+                    
+                    for (let i = 1; i < this.segments.length; i++) {
+                        ctx.lineTo(
+                            this.segments[i].x - camera.x + canvas.width / 2,
+                            this.segments[i].y - camera.y + canvas.height / 2
+                        );
+                    }
+                    
+                    ctx.stroke();
+                    ctx.globalAlpha = 1;
+                }
+                
+                // Draw head with glow
+                const screenX = this.x - camera.x + canvas.width / 2;
+                const screenY = this.y - camera.y + canvas.height / 2;
+                
+                // Head glow
+                const gradient = ctx.createRadialGradient(
+                    screenX, screenY, 0,
+                    screenX, screenY, 20
+                );
+                gradient.addColorStop(0, this.color);
+                gradient.addColorStop(1, "transparent");
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(screenX, screenY, 20, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Head core
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(screenX, screenY, 10, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Shield effect
+                if (this.shieldActive) {
+                    ctx.strokeStyle = "#00ffaa";
+                    ctx.lineWidth = 3;
+                    ctx.setLineDash([5, 5]);
+                    ctx.beginPath();
+                    ctx.arc(screenX, screenY, 18, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+            }
+            
+            checkCollision() {
+                if (!this.alive) return;
+                
+                // Check collision with self (skip first few segments)
+                for (let i = 10; i < this.segments.length; i++) {
+                    const segment = this.segments[i];
+                    if (distance(this.x, this.y, segment.x, segment.y) < 10) {
+                        this.die();
+                        return;
+                    }
+                }
+                
+                // Check collision with other worms
+                const allWorms = [gameState.player, ...gameState.bots].filter(w => w && w.alive && w !== this);
+                for (const worm of allWorms) {
+                    // Skip if both have shield
+                    if (this.shieldActive && worm.shieldActive) continue;
+                    
+                    // Check head collision with other worm's trail
+                    for (let i = 5; i < worm.segments.length; i++) {
+                        const segment = worm.segments[i];
+                        if (distance(this.x, this.y, segment.x, segment.y) < 10) {
+                            // Thorns effect
+                            if (worm.passiveTrait.name === "Thorns" && !this.shieldActive) {
+                                this.die();
+                                return;
+                            }
+                            
+                            // Normal collision
+                            if (!this.shieldActive) {
+                                this.die();
+                                return;
+                            }
+                        }
+                    }
+                }
+                
+                // Check collision with mines
+                for (const mine of gameState.mines) {
+                    if (mine.owner === this) continue; // Don't hit own mines
+                    
+                    if (distance(this.x, this.y, mine.x, mine.y) < mine.radius + 10) {
+                        if (!this.shieldActive) {
+                            this.die();
+                            mine.exploding = true;
+                            return;
+                        }
+                    }
+                }
+                
+                // Check collision with border
+                if (this.x < 10 || this.x > WORLD_SIZE - 10 || 
+                    this.y < 10 || this.y > WORLD_SIZE - 10) {
+                    this.die();
+                }
+            }
+            
+            die() {
+                this.alive = false;
+                
+                // Create death particles
+                for (let i = 0; i < 50; i++) {
+                    const angle = random(0, Math.PI * 2);
+                    const speed = random(1, 5);
+                    gameState.particles.push(new Particle(
+                        this.x,
+                        this.y,
+                        this.color,
+                        random(3, 8),
+                        1000,
+                        Math.cos(angle) * speed,
+                        Math.sin(angle) * speed
+                    ));
+                }
+                
+                // Respawn logic for bots
+                if (!this.isPlayer) {
+                    setTimeout(() => {
+                        this.respawn();
+                    }, 5000);
+                }
+            }
+            
+            respawn() {
+                this.x = random(100, WORLD_SIZE - 100);
+                this.y = random(100, WORLD_SIZE - 100);
+                this.length = STARTING_LENGTH;
+                this.segments = [];
+                for (let i = 0; i < this.length; i++) {
+                    this.segments.push({
+                        x: this.x - Math.cos(this.angle) * i,
+                        y: this.y - Math.sin(this.angle) * i,
+                        age: i
+                    });
+                }
+                this.alive = true;
+                this.boosting = false;
+                this.shieldActive = false;
+                this.trailErased = false;
+                this.activeAbility = null;
+            }
+        }
+        
+        // Initialize game
+        function initGame() {
+            // Create player
+            gameState.player = new Worm(
+                WORLD_SIZE / 2, 
+                WORLD_SIZE / 2, 
+                "Player", 
+                "#00f0ff", 
+                true
+            );
+            
+            // Create bots
+            gameState.bots = [];
+            for (let i = 0; i < BOT_COUNT; i++) {
+                const x = random(100, WORLD_SIZE - 100);
+                const y = random(100, WORLD_SIZE - 100);
+                gameState.bots.push(new Worm(
+                    x, 
+                    y, 
+                    botNames[i], 
+                    botColors[i]
+                ));
+            }
+            
+            // Create orbs
+            gameState.orbs = [];
+            for (let i = 0; i < ORB_COUNT; i++) {
+                const size = Math.random() > 0.9 ? 2 : 1; // 10% chance for large orb
+                gameState.orbs.push(new Orb(
+                    random(50, WORLD_SIZE - 50),
+                    random(50, WORLD_SIZE - 50),
+                    size
+                ));
+            }
+            
+            // Reset camera
+            gameState.camera = { 
+                x: gameState.player.x, 
+                y: gameState.player.y,
+                targetX: gameState.player.x,
+                targetY: gameState.player.y
+            };
+            
+            // Reset game state
+            gameState.gameOver = false;
+            gameState.respawnTimer = 0;
+            document.getElementById('deathScreen').classList.remove('visible');
+        }
+        
+        // Update leaderboard
+        function updateLeaderboard() {
+            const allWorms = [gameState.player, ...gameState.bots].filter(w => w && w.alive);
+            allWorms.sort((a, b) => b.length - a.length);
+            
+            const leaderboardEl = document.getElementById('leaderboard');
+            leaderboardEl.innerHTML = '<h3>LEADERBOARD</h3>';
+            
+            for (let i = 0; i < Math.min(5, allWorms.length); i++) {
+                const worm = allWorms[i];
+                const entry = document.createElement('div');
+                entry.className = `entry ${worm.isPlayer ? 'you' : ''}`;
+                entry.textContent = `${i + 1}. ${worm.name} • ${Math.floor(worm.length)}`;
+                leaderboardEl.appendChild(entry);
+            }
+            
+            // Update player info
+            document.getElementById('playerInfo').textContent = 
+                `${gameState.player.name} • Length: ${Math.floor(gameState.player.length)}`;
+        }
+        
+        // Update ability UI
+        function updateAbilityUI() {
+            const now = Date.now();
+            
+            // Update cooldowns
+            for (const ability in abilityCooldowns) {
+                if (abilityCooldowns[ability] > now) {
+                    const cooldown = abilityCooldowns[ability] - now;
+                    const maxCooldown = {
+                        boost: 30000,
+                        shield: 45000,
+                        mineDrop: 20000,
+                        trailErase: 60000
+                    }[ability];
+                    
+                    const cooldownPercent = (cooldown / maxCooldown) * 100;
+                    document.querySelector(`#${ability} .cooldown-mask`).style.height = `${cooldownPercent}%`;
+                } else {
+                    document.querySelector(`#${ability} .cooldown-mask`).style.height = "0%";
+                }
+            }
+        }
+        
+        // Handle ability activation
+        function setupAbilityButtons() {
+            document.getElementById('boost').addEventListener('click', () => {
+                if (gameState.player.alive && abilityCooldowns.boost <= Date.now()) {
+                    gameState.player.activateAbility('boost');
+                    abilityCooldowns.boost = Date.now() + 30000;
+                }
+            });
+            
+            document.getElementById('shield').addEventListener('click', () => {
+                if (gameState.player.alive && abilityCooldowns.shield <= Date.now()) {
+                    gameState.player.activateAbility('shield');
+                    abilityCooldowns.shield = Date.now() + 45000;
+                }
+            });
+            
+            document.getElementById('mineDrop').addEventListener('click', () => {
+                if (gameState.player.alive && abilityCooldowns.mineDrop <= Date.now()) {
+                    gameState.player.activateAbility('mineDrop');
+                    abilityCooldowns.mineDrop = Date.now() + 20000;
+                }
+            });
+            
+            document.getElementById('trailErase').addEventListener('click', () => {
+                if (gameState.player.alive && abilityCooldowns.trailErase <= Date.now()) {
+                    gameState.player.activateAbility('trailErase');
+                    abilityCooldowns.trailErase = Date.now() + 60000;
+                }
+            });
+            
+            document.getElementById('respawnButton').addEventListener('click', () => {
+                gameState.player.respawn();
+                gameState.gameOver = false;
+                document.getElementById('deathScreen').classList.remove('visible');
+            });
+        }
+        
+        // Main game loop
+        function gameLoop(timestamp) {
+            // Calculate delta time
+            const deltaTime = timestamp - gameState.lastTime;
+            gameState.lastTime = timestamp;
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw background with vignette
+            const gradient = ctx.createRadialGradient(
+                canvas.width / 2, canvas.height / 2, 0,
+                canvas.width / 2, canvas.height / 2, Math.max(canvas.width, canvas.height) / 2
+            );
+            gradient.addColorStop(0, "rgba(12, 12, 26, 0.8)");
+            gradient.addColorStop(1, "rgba(5, 5, 15, 1)");
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw border danger zone
+            ctx.strokeStyle = "#ff3366";
+            ctx.lineWidth = 10;
+            ctx.setLineDash([10, 10]);
+            ctx.strokeRect(
+                10 - gameState.camera.x + canvas.width / 2,
+                10 - gameState.camera.y + canvas.height / 2,
+                WORLD_SIZE - 20,
+                WORLD_SIZE - 20
+            );
+            ctx.setLineDash([]);
+            
+            if (gameState.player.alive) {
+                // Update camera (elastic follow)
+                gameState.camera.targetX = gameState.player.x;
+                gameState.camera.targetY = gameState.player.y;
+                gameState.camera.x = lerp(gameState.camera.x, gameState.camera.targetX, 0.1);
+                gameState.camera.y = lerp(gameState.camera.y, gameState.camera.targetY, 0.1);
+            }
+            
+            // Update and draw orbs
+            for (let i = gameState.orbs.length - 1; i >= 0; i--) {
+                const orb = gameState.orbs[i];
+                orb.update();
+                
+                // Check collision with player
+                if (gameState.player.alive) {
+                    const dist = distance(gameState.player.x, gameState.player.y, orb.x, orb.y);
+                    if (dist < 20) {
+                        // Apply magnet effect
+                        if (gameState.player.passiveTrait.name === "Magnet") {
+                            const pullStrength = 0.5;
+                            const dx = gameState.player.x - orb.x;
+                            const dy = gameState.player.y - orb.y;
+                            const dist = Math.sqrt(dx * dx + dy * dy);
+                            if (dist < 100) {
+                                orb.x += (dx / dist) * pullStrength;
+                                orb.y += (dy / dist) * pullStrength;
+                            }
+                        }
+                        
+                        if (dist < orb.radius + 10) {
+                            // Collect orb
+                            gameState.player.grow(orb.size === 2 ? 20 : 5);
+                            
+                            // Create particles
+                            for (let j = 0; j < (orb.size === 2 ? 30 : 15); j++) {
+                                const angle = random(0, Math.PI * 2);
+                                const speed = random(1, 3);
+                                gameState.particles.push(new Particle(
+                                    orb.x,
+                                    orb.y,
+                                    orb.color,
+                                    random(2, 5),
+                                    500,
+                                    Math.cos(angle) * speed,
+                                    Math.sin(angle) * speed
+                                ));
+                            }
+                            
+                            // Replace orb
+                            gameState.orbs[i] = new Orb(
+                                random(50, WORLD_SIZE - 50),
+                                random(50, WORLD_SIZE - 50),
+                                Math.random() > 0.9 ? 2 : 1
+                            );
+                        }
+                    }
+                }
+                
+                orb.draw(ctx, gameState.camera);
+            }
+            
+            // Update and draw mines
+            for (let i = gameState.mines.length - 1; i >= 0; i--) {
+                const mine = gameState.mines[i];
+                if (!mine.update()) {
+                    gameState.mines.splice(i, 1);
+                    continue;
+                }
+                
+                // Check explosion collision
+                if (mine.exploding) {
+                    const allWorms = [gameState.player, ...gameState.bots].filter(w => w && w.alive);
+                    for (const worm of allWorms) {
+                        if (worm === mine.owner) continue;
+                        
+                        const dist = distance(worm.x, worm.y, mine.x, mine.y);
+                        if (dist < mine.explosionRadius && !worm.shieldActive) {
+                            worm.die();
+                        }
+                    }
+                }
+                
+                mine.draw(ctx, gameState.camera);
+            }
+            
+            // Update and draw player
+            if (gameState.player.alive) {
+                gameState.player.update();
+                gameState.player.checkCollision();
+                gameState.player.draw(ctx, gameState.camera);
+            }
+            
+            // Update and draw bots
+            for (const bot of gameState.bots) {
+                if (bot.alive) {
+                    bot.update();
+                    bot.checkCollision();
+                    bot.draw(ctx, gameState.camera);
+                }
+            }
+            
+            // Update and draw particles
+            for (let i = gameState.particles.length - 1; i >= 0; i--) {
+                const particle = gameState.particles[i];
+                if (!particle.update()) {
+                    gameState.particles.splice(i, 1);
+                    continue;
+                }
+                particle.draw(ctx, gameState.camera);
+            }
+            
+            // Update UI
+            if (gameState.player.alive) {
+                updateLeaderboard();
+                updateAbilityUI();
+            }
+            
+            // Handle player death
+            if (!gameState.player.alive && !gameState.gameOver) {
+                gameState.gameOver = true;
+                gameState.respawnTimer = RESPAWN_TIME;
+                
+                // Calculate final rank
+                const allWorms = [gameState.player, ...gameState.bots].filter(w => w && w.alive);
+                allWorms.sort((a, b) => b.length - a.length);
+                let rank = 1;
+                for (let i = 0; i < allWorms.length; i++) {
+                    if (allWorms[i] === gameState.player) {
+                        rank = i + 1;
+                        break;
+                    }
+                }
+                
+                document.getElementById('finalRank').textContent = `Final Rank: #${rank}`;
+                document.getElementById('deathScreen').classList.add('visible');
+                
+                // Start respawn countdown
+                const countdownEl = document.getElementById('respawnCountdown');
+                const countdownInterval = setInterval(() => {
+                    gameState.respawnTimer -= 100;
+                    if (gameState.respawnTimer <= 0) {
+                        clearInterval(countdownInterval);
+                        countdownEl.textContent = "";
+                        return;
+                    }
+                    countdownEl.textContent = Math.ceil(gameState.respawnTimer / 1000);
+                }, 100);
+            }
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Initialize and start game
+        setupAbilityButtons();
+        initGame();
+        requestAnimationFrame(gameLoop);
+    </script>
+</body>
+</html>
